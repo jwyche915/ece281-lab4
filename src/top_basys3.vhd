@@ -26,9 +26,15 @@ architecture top_basys3_arch of top_basys3 is
 
     -- signal declarations
     signal w_clk : std_logic;
+    signal w_clk_2: std_logic;
     signal w_clk_reset : std_logic;
     signal w_elev_reset : std_logic;
     signal w_floor_num_1 : std_logic_vector (3 downto 0);
+    signal w_floor_num_2 : std_logic_vector (3 downto 0);
+    signal w_seg_1 : std_logic_vector (6 downto 0);
+    signal w_seg_2 : std_logic_vector (6 downto 0);
+    signal w_D1 : std_logic_vector (6 downto 0);
+    signal w_D3 : std_logic_vector (6 downto 0);
   
 	-- component declarations
     component sevenseg_decoder is
@@ -81,6 +87,14 @@ begin
 	   o_clk => w_clk
    );
    
+   clock_divider_inst_2 : clock_divider
+   generic map (k_DIV => 12500)
+   port map (
+        i_clk => clk,
+        i_reset => w_clk_reset,
+        o_clk => w_clk_2
+    );
+     
 	elevator_controller_fsm_inst1 : elevator_controller_fsm
 	port map (
 	   i_clk => w_clk,
@@ -89,15 +103,44 @@ begin
 	   go_up_down => sw(1),
 	   o_floor => w_floor_num_1
     );
+    
+    elevator_controller_fsm_inst2 : elevator_controller_fsm
+	port map (
+	   i_clk => w_clk,
+	   i_reset => w_elev_reset,
+	   is_stopped => sw(14),
+	   go_up_down => sw(15),
+	   o_floor => w_floor_num_2
+    );
    
     sevenseg_decoder_inst1 : sevenseg_decoder
     port map (
         i_Hex => w_floor_num_1,
-        o_seg_n => seg
+        o_seg_n => w_seg_1
     ); 
+ 
+    sevenseg_decoder_inst2 : sevenseg_decoder
+    port map (
+        i_Hex => w_floor_num_2,
+        o_seg_n => w_seg_2
+    );
+    
+    TDM4_inst : TDM4
+    generic map (K_WIDTH => 7)   -- takes input from 7SD decoder
+    port map (
+        i_clk => w_clk_2,
+        i_reset => w_elev_reset,
+        i_D0 => w_seg_1,
+        i_D1 => w_D1,
+        i_D2 => w_seg_2,
+        i_D3 => w_D3,
+        o_data => seg,
+        o_sel => an
+    );
     	
-	
 	-- CONCURRENT STATEMENTS ----------------------------
+	w_D1 <= "0001110";
+	w_D3 <= "0001110";
 	
 	-- LED 15 gets the FSM slow clock signal. The rest are grounded.
 	led(15) <= w_clk;
@@ -109,12 +152,5 @@ begin
 	w_clk_reset <= btnU OR btnL;
 	w_elev_reset <= btnU OR btnR;
 	
-	-- wire up active-low 7SD anode (active low) to button (active-high)
-	--display 0, 1, and 3 off
-	an(0) <= '1';
-	an(1) <= '1';
-	an(3) <= '1';
-	-- display 2 on
-	an(2) <= '0';
-	
+
 end top_basys3_arch;
