@@ -129,7 +129,7 @@ begin
     generic map (K_WIDTH => 7)   -- takes input from 7SD decoder
     port map (
         i_clk => w_clk_2,
-        i_reset => w_elev_reset,
+        i_reset => '0',
         i_D0 => w_seg_1,
         i_D1 => w_D1,
         i_D2 => w_seg_2,
